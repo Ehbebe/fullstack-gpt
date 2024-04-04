@@ -1,15 +1,13 @@
-from langchain.prompts import ChatPromptTemplate
-from langchain.document_loaders import UnstructuredFileLoader
-from langchain.embeddings import CacheBackedEmbeddings, OpenAIEmbeddings
-from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
-from langchain.storage import LocalFileStore
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.vectorstores.faiss import FAISS
-from langchain.chat_models import ChatOpenAI
-from langchain.callbacks.base import BaseCallbackHandler
 import streamlit as st
-import nltk
-import os
+from langchain.chat_models import ChatOpenAI
+from langchain.document_loaders import UnstructuredFileLoader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
+from langchain.vectorstores.faiss import FAISS
+from langchain.storage import LocalFileStore
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
+from langchain.callbacks.base import BaseCallbackHandler
 
 st.set_page_config(
     page_title="DocumentGPT",
@@ -43,19 +41,10 @@ llm = ChatOpenAI(
 @st.cache_data(show_spinner="Embedding file...")
 def embed_file(file):
     file_content = file.read()
-
-    file_dir = "./.cache/files"
-    if not os.path.exists(file_dir):
-        os.makedirs(file_dir)
-    file_path = os.path.join(file_dir, file.name)
-
+    file_path = f"./.cache/files/{file.name}"
     with open(file_path, "wb") as f:
         f.write(file_content)
     cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}")
-
-    nltk.download("punkt")
-    nltk.download("averaged_perceptron_tagger")
-
     splitter = CharacterTextSplitter.from_tiktoken_encoder(
         separator="\n",
         chunk_size=600,
@@ -68,6 +57,10 @@ def embed_file(file):
     vectorstore = FAISS.from_documents(docs, cached_embeddings)
     retriever = vectorstore.as_retriever()
     return retriever
+
+
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
 
 
 def save_message(message, role):
@@ -108,7 +101,6 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-
 st.title("DocumentGPT")
 
 st.markdown(
@@ -116,6 +108,7 @@ st.markdown(
 Welcome!
             
 Use this chatbot to ask questions to an AI about your files!
+
 Upload your files on the sidebar.
 """
 )
@@ -123,8 +116,23 @@ Upload your files on the sidebar.
 with st.sidebar:
     file = st.file_uploader(
         "Upload a .txt .pdf or .docx file",
-        type=["pdf", "txt", "docx"],
+        type=["txt", "pdf", "docx"],
     )
+    api_key = st.text_input(
+        "Please Enter your 'OpenAI API_KEY'",
+        value=st.session_state.get("api_key", ""),
+        key="api_key_input",
+    )
+    if st.button("Clear API Key"):
+        st.session_state["api_key"] = ""
+        st.experimental_rerun()
+    st.markdown(
+        "[GitHub Repository Link](https://github.com/Ehbebe/fullstack-gpt/blob/main/pages/01_DocumentGPT.py)"
+    )
+
+if not file or not api_key:
+    st.warning("Please upload a file and provide an OpenAI API Key to proceed.")
+    st.stop()
 
 if file:
     retriever = embed_file(file)
@@ -142,7 +150,7 @@ if file:
             | llm
         )
         with st.chat_message("ai"):
-            response = chain.invoke(message)
+            chain.invoke(message)
 
 else:
     st.session_state["messages"] = []
