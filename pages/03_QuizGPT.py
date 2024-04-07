@@ -24,6 +24,18 @@ st.set_page_config(
 
 st.title("QuizGPT")
 
+api_key = st.sidebar.text_input("Enter your OpenAI API key:", type="password")
+
+if not api_key:
+    st.error("Please enter your OpenAI API key.")
+    st.stop()
+
+difficulty = st.sidebar.selectbox("Select difficulty:", ["Easy", "Medium", "Hard"])
+
+st.sidebar.markdown(
+    "[GitHub Repo](https://github.com/Ehbebe/fullstack-gpt/blob/main/pages/03_QuizGPT.py)"
+)
+
 llm = ChatOpenAI(
     temperature=0.1,
     model="gpt-3.5-turbo-0125",
