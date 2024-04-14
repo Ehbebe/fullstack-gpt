@@ -3,3 +3,4 @@ files/
 .cache/
 .streamlit
 .DS_Store
+.pylintrc
